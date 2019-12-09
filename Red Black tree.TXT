@@ -1,0 +1,1893 @@
+//CSE674 HW6  Due: 11:59PM, Nov. 25 (Monday)
+#include <iostream>
+using namespace std;
+
+class node {
+public:
+	int value;
+	bool color; //true: red, false: black
+	node* p_parent;
+	node* p_Lchild;
+	node* p_Rchild;
+	node() { p_parent = p_Lchild = p_Rchild = nullptr; }
+	node(int i) { value = i; p_parent = p_Lchild = p_Rchild = nullptr; }
+};
+
+class tree {
+public:
+	node* root;
+	tree() { root = nullptr; }
+
+	//For insert, the new node should be the last of nodes with the same value in the order of 
+	//inorder traversal.  (The same as HW5.)
+	void insert_node(int i) {
+		//cout << "inside insert node " << i << endl;
+		node* inode = new node(i);//inode stands for insertNode
+		inode->color = true;//All the newly added nodes will be red by default;
+		node* p = new node(-1); //p_parent node
+		node* u = new node(-1);; //Uncle node
+		node* g = new node(-1);; //grandp_parent node
+		bool doubleRotate;
+		if (root == nullptr) {
+			root = inode;
+			root->color = false;
+			inode->p_parent = nullptr;
+			return;
+		}
+		else {
+			//Write the case when root is not Null. Here we have to traverse the tree according to BST rules and insert the node IN ORDER
+			if (root != nullptr) {
+				node* traverse;
+				traverse = root;
+				while (true) {
+					if (i < traverse->value) {
+						if (traverse->p_Lchild == nullptr) {//This means p_Lchild is a nil node
+							inode->p_parent = traverse;
+							traverse->p_Lchild = inode;
+							break;//breaking out of while once the insert operation is completed
+
+						}
+						else {
+							traverse = traverse->p_Lchild;
+						}
+					}
+					else {//else is executed if i >= traverse->value
+						if (traverse->p_Rchild == nullptr) {//This means p_Rchild is a nil node
+							inode->p_parent = traverse;
+							traverse->p_Rchild = inode;
+							break;//breaking out of while once the insert operation is completed
+						}
+						else {
+							traverse = traverse->p_Rchild;
+						}
+					}
+				}//outside while
+			}
+		}
+		//By this point we have created a node and inserted it following Inorder rule
+		//Now we will define the nodes which we have to keep track of
+		while (true) {
+			if (inode == nullptr) {
+				break;//if we have reached nullptr we will just break
+			}
+			p = inode->p_parent;
+			if (p == nullptr) {
+				g = nullptr;
+				u = nullptr;
+			}
+			else {
+				g = inode->p_parent->p_parent;
+				if (g != nullptr) {
+					if (p == g->p_Lchild)
+						u = g->p_Rchild;
+					else
+						u = g->p_Lchild;
+				}
+				else {
+					u = nullptr;
+				}
+			}
+			//Now we will have to check for violations
+			if (inode->color == true && inode != root) {
+				if (inode->p_parent->color == true) {
+					//if the p_parent is also RED i.e true then Property 4 violation has occured and we need to fix it
+					//2 cases... 1) if uncle node is black and 2)if uncle node is red
+					//cout << "violation has occured\n";
+					if (u != nullptr) {//if u is not a nullptr then check if the u node is black or red
+						//uncle node is black
+						if (u->color == false) {
+							//cout << "uncle node exists and is black so we will do rotations\n";
+							//uncle node is black
+							//if uncle node is black then do the appropriate rotation and change the color of p and g
+							if (p == g->p_Lchild) {
+								//traverse left
+								if (inode == p->p_Lchild) {
+									//L-L pattern. So perform R-Rotate at G node
+									insert_R_rotate(g);
+									doubleRotate = false;
+								}
+								else {
+									//L-R pattern. So perform  L-Rotate at P followed by R-Rotate at g node
+									insert_L_rotate(p);
+									insert_R_rotate(g);
+									doubleRotate = true;
+								}
+								//if R rotate has taken place then get new inodes location
+								inode = g->p_Lchild;
+							}
+							else {
+								//it will mean we traverse right.
+								if (inode == p->p_Lchild) {
+									//R-L pattern. So perform R-Rotate at p node followed by L-rotate at g node
+									insert_R_rotate(p);
+									insert_L_rotate(g);
+									doubleRotate = true;
+								}
+								else {
+									//RR pattern. So apply L-Rotate at g node
+									insert_L_rotate(g);
+									doubleRotate = false;
+								}
+								//if L rotate has taken place then get new inodes location
+								inode = g->p_Rchild;
+							}
+							//after all the rotations are complete we will have to change the color of g and p nodes
+							if (g->color == true) {
+								g->color = false;
+							}
+							else {
+								g->color = true;
+							}
+							if (g->p_parent->color == true) {
+								g->p_parent->color = false;
+							}
+							else {
+								g->p_parent->color = true;
+							}
+						}
+						else {
+							//cout << "uncle node exists and is Red so we will just change colors\n";
+
+							//uncle node is red. So we will just have to change the colors of p,g and u nodes
+							if (p->color == true) {
+								p->color = false;
+							}
+							else {
+								p->color = true;
+							}
+							if (g->color == true) {
+								g->color = false;
+							}
+							else {
+								g->color = true;
+							}
+							if (u->color == true) {
+								u->color = false;
+							}
+							else {
+								u->color = true;
+							}
+							inode = g;//because we will be changing the colors of p g and u nodes, generally p and u will become black and g will become red so we will have to check its parent again
+						}
+					}
+					else {
+						//U node=nullptr will be considered black. SO it will follow the same steps as the above for u-> black node
+											//uncle node is black
+							//if uncle node is black then do the appropriate rotation and change the color of p and g
+						//cout << "uncle node does not exist and is black so we will do rotations\n";
+						if (p == g->p_Lchild) {
+							//traverse left
+							if (inode == p->p_Lchild) {
+								//L-L pattern. So perform R-Rotate at G node
+								insert_R_rotate(g);
+							}
+							else {
+								//L-R pattern. So perform  L-Rotate at P followed by R-Rotate at g node
+								insert_L_rotate(p);
+								insert_R_rotate(g);
+							}
+							//if R rotate has taken place then get new inodes location
+							inode = g->p_Lchild;
+						}
+						else {
+							//it will mean we traverse right.
+							if (inode == p->p_Lchild) {
+								//R-L pattern. So perform R-Rotate at p node followed by L-rotate at g node
+								insert_R_rotate(p);
+								insert_L_rotate(g);
+							}
+							else {
+								//RR pattern. So apply L-Rotate at g node
+								insert_L_rotate(g);
+							}
+							//if L rotate has taken place then get new inodes location
+							inode = g->p_Rchild;
+						}
+						//after all the rotations are complete we will have to change the color of g and p nodes(P NODE IS WRONG. BASICALLY WE HAVE TO CHANGE THE COLOR OF G'S PARENT NODE)
+						if (g->color == true) {
+							g->color = false;
+						}
+						else {
+							g->color = true;
+						}
+						if (g->p_parent->color == true) {
+							g->p_parent->color = false;
+						}
+						else {
+							g->p_parent->color = true;
+						}
+					}
+					//By this point we will have completed all the required rotations
+					continue;
+				}
+				else {//Else no violation has occured because the newly added node was a black node so we will simply return
+					break;
+				}
+			}
+			else {
+				//probably changes have taken place till root so we will just break as we will be goin to correct the roots color outside the while loop
+				break;
+			}
+
+		}
+		//Now the only thing we have to verify is that the root node is black. If not change it to black
+		if (root != nullptr) {
+			root->color = false;
+		}
+
+	}
+
+	void insert_R_rotate(node* p) {//For insert_node, R-rotate at node pointed by p
+		//first i need to find out if p is the left child or right child
+		//cout << "inside insert R-Rotate\n";
+		node* action = p;
+		node* lchild = p->p_Lchild;
+		node* sameBranchChild;
+		if (p->p_Lchild == nullptr) {
+			sameBranchChild = nullptr;
+		}
+		else {
+			sameBranchChild = p->p_Lchild->p_Lchild;
+		}
+
+		node* branchShiftChild;
+		if (p->p_Lchild == nullptr) {
+			branchShiftChild = nullptr;
+		}
+		else {
+			branchShiftChild = p->p_Lchild->p_Rchild;
+		}
+		node* rchild = p->p_Rchild;
+		//cout << "The program is inside R_Rotate function\n";
+		if (p != root) {//i.e rotation is happening anywhere else apart from the root node
+			if (p->p_parent->p_Rchild == p) {//if the action node is on the right branch
+				p->p_parent->p_Rchild = lchild;
+				if (lchild != nullptr)
+					lchild->p_parent = action->p_parent;
+				if (lchild != nullptr)
+					lchild->p_Rchild = action;
+				action->p_parent = lchild;
+				if (lchild != nullptr)
+					lchild->p_Lchild = sameBranchChild;
+				if (sameBranchChild != nullptr)
+					sameBranchChild->p_parent = lchild;
+				action->p_Lchild = branchShiftChild;
+				if (branchShiftChild != nullptr)
+					branchShiftChild->p_parent = action;
+				action->p_Rchild = rchild;
+				if (rchild != nullptr)
+					rchild->p_parent = action;
+			}
+			else {//else the action node will be on the left branch
+				p->p_parent->p_Lchild = lchild;
+				lchild->p_parent = action->p_parent;
+				lchild->p_Rchild = action;
+				action->p_parent = lchild;
+				lchild->p_Lchild = sameBranchChild;
+				if (sameBranchChild != nullptr)
+					sameBranchChild->p_parent = lchild;
+				action->p_Lchild = branchShiftChild;
+				if (branchShiftChild != nullptr)
+					branchShiftChild->p_parent = action;
+				action->p_Rchild = rchild;
+				if (rchild != nullptr)
+					rchild->p_parent = action;
+			}
+		}
+		else {//This will mean that the action node is the root node
+			root = lchild;
+			lchild->p_parent = nullptr;
+			lchild->p_Lchild = sameBranchChild;
+			if (sameBranchChild != nullptr)
+				sameBranchChild->p_parent = lchild;
+			lchild->p_Rchild = action;
+			action->p_parent = lchild;
+			action->p_Lchild = branchShiftChild;
+			if (branchShiftChild != nullptr)
+				branchShiftChild->p_parent = action;
+			action->p_Rchild = rchild;
+			if (rchild != nullptr)
+				rchild->p_parent = action;
+		}
+		//By this point the rotations are completed.
+	}
+	void insert_L_rotate(node* p) {//for insert_node, L-rotate at node pointed by p
+		//p points to the node at which the rotation will be performed.
+		//cout << "The program is inside L_Rotate function\n";
+		//cout << "inside insert L-Rotate\n";
+		node* action = p;
+		node* lchild = p->p_Lchild;
+		node* sameBranchChild;
+		node* branchShiftChild;
+		if (p->p_Rchild != nullptr) {
+			sameBranchChild = p->p_Rchild->p_Rchild;
+			branchShiftChild = p->p_Rchild->p_Lchild;
+		}
+		else {
+			sameBranchChild = nullptr;
+			branchShiftChild = nullptr;
+		}
+		node* rchild = p->p_Rchild;
+		if (p != root) { //Any internal node
+			if (p->p_parent->p_Rchild == p) {//action node is on the right branch
+				p->p_parent->p_Rchild = rchild;
+				rchild->p_parent = action->p_parent;
+				rchild->p_Lchild = action;
+				action->p_parent = rchild;
+				rchild->p_Rchild = sameBranchChild;
+				if (sameBranchChild != nullptr)
+					sameBranchChild->p_parent = rchild;
+				action->p_Lchild = lchild;
+				if (lchild != nullptr)
+					lchild->p_parent = action;
+				action->p_Rchild = branchShiftChild;
+				if (branchShiftChild != nullptr)
+					branchShiftChild->p_parent = action;
+			}
+			else {//action node is on left child
+				p->p_parent->p_Lchild = rchild;
+				if (rchild != nullptr)
+					rchild->p_parent = action->p_parent;
+				if (rchild != nullptr)
+					rchild->p_Lchild = action;
+				action->p_parent = rchild;
+				if (rchild != nullptr)
+					rchild->p_Rchild = sameBranchChild;
+				if (sameBranchChild != nullptr)
+					sameBranchChild->p_parent = rchild;
+				action->p_Lchild = lchild;
+				if (lchild != nullptr)
+					lchild->p_parent = action;
+				action->p_Rchild = branchShiftChild;
+				if (branchShiftChild != nullptr)
+					branchShiftChild->p_parent = action;
+			}
+		}
+		else {//This will mean that the action node is the root node
+			root = rchild;
+			rchild->p_parent = nullptr;
+			rchild->p_Lchild = action;
+			action->p_parent = rchild;
+			rchild->p_Rchild = sameBranchChild;
+			if (sameBranchChild != nullptr)
+				sameBranchChild->p_parent = rchild;
+			action->p_Lchild = lchild;
+			if (lchild != nullptr)
+				lchild->p_parent = action;
+			action->p_Rchild = branchShiftChild;
+			if (branchShiftChild != nullptr)
+				branchShiftChild->p_parent = action;
+		}
+		//By this point the rotations are completed.
+	}
+	//All other siutions of insert_node should be directly implemented inside add_node
+
+
+	//For delete, the deleted node shoud be the first of nodes with the same value in the order of
+	//inorder traversal. (The same as HW5).
+	//For replacement, always recursively replace it with predecessor, unless there is no predecessor. (In this
+	//case, replace it with successor.)
+
+
+	void delete_node(int i) {
+		//cout << "\nInside delete_node function value=" << i << endl;;
+		/*Steps to delete:-
+		 starting from the root find i
+			if found then
+				1.check if it is the first occurance i.e check if the same value is in its left subtree as well. If yes then that should be the node to be deleted
+				2.replace the node to be deleted with predecessor or successor
+				3.update height
+			else Do nothing
+			*/
+			//cout << "inside delete node function " << i << endl;
+		node* traverse = root;
+		node* nodeToBeDeleted = nullptr;
+		node* ref;
+		node* x, * p, * g, * u;//In the book we have defined x, p, g and u as the nodes on which we perform operations
+		node* doubleBlackNode = new node(-1);
+		node* predecessor, * successor, * new_predecessor, * new_successor; //I will be using *new_predecessor and *new_successor value to recalculate the height
+		predecessor = nullptr; successor = nullptr;
+		node* dnode; //I will be using this node to verify which test
+		while (true) {
+			if (i == traverse->value) {
+				nodeToBeDeleted = traverse;
+				//here we have to add the condition that it should be the leftmost node i.e to delete the first occurance in the node
+				if (i <= traverse->value) {
+					if (traverse->p_Lchild == nullptr) {//This means p_Lchild is a nil node
+						//This means nothing else is there on the left side which means that the node with value i does not exist in the tree so we will just break
+						if (i == traverse->value)
+							nodeToBeDeleted = traverse;
+						break;
+					}
+					else {
+						traverse = traverse->p_Lchild;
+					}
+				}
+				else {//else is executed if i > traverse->value
+					if (traverse->p_Rchild == nullptr) {//This means p_Rchild is a nil node
+						//This means nothing else is there on the right side which means that the node with value i does not exist in the tree so we will just break
+						break;
+					}
+					else {
+						traverse = traverse->p_Rchild;
+					}
+				}
+			}
+			if (i <= traverse->value) {
+				if (traverse->p_Lchild == nullptr) {//This means p_Lchild is a nil node
+					//This means nothing else is there on the left side which means that the node with value i does not exist in the tree so we will just break
+					if (i == traverse->value)
+						nodeToBeDeleted = traverse;
+					break;
+				}
+				else {
+					traverse = traverse->p_Lchild;
+				}
+			}
+			else {//else is executed if i > traverse->value
+				if (traverse->p_Rchild == nullptr) {//This means p_Rchild is a nil node
+					//This means nothing else is there on the right side which means that the node with value i does not exist in the tree so we will just break
+					break;
+				}
+				else {
+					traverse = traverse->p_Rchild;
+				}
+			}
+		}//By this point we have found the position of the node to be deleted
+		dnode = nodeToBeDeleted;
+
+		//Handling height optimization locally
+		if (nodeToBeDeleted != nullptr) {
+			if (nodeToBeDeleted->p_Lchild != nullptr && nodeToBeDeleted->p_Rchild == nullptr) {
+				if (nodeToBeDeleted->p_Lchild->p_Lchild != nullptr) {
+					delete_1_R_rotate(nodeToBeDeleted);
+				}
+				else if (nodeToBeDeleted->p_Lchild->p_Rchild != nullptr) {
+					delete_1_L_rotate(nodeToBeDeleted->p_Lchild);
+					delete_1_R_rotate(nodeToBeDeleted);
+					dnode = nodeToBeDeleted->p_parent;
+					if (nodeToBeDeleted->color == true) {
+						dnode->color = false;
+						dnode->p_Lchild->color = true;
+						dnode->p_Rchild->color = true;
+					}
+					else {
+						dnode->color = false;
+						dnode->p_Lchild->color = true;
+						dnode->p_Rchild->color = true;
+					}
+				}
+				else {
+
+				}
+			}
+			else {
+				if (nodeToBeDeleted->p_Rchild != nullptr && nodeToBeDeleted->p_Lchild == nullptr) {
+					if (nodeToBeDeleted->p_Rchild->p_Rchild != nullptr) {
+						delete_1_L_rotate(nodeToBeDeleted);
+					}
+					else if (nodeToBeDeleted->p_Rchild->p_Lchild != nullptr) {
+						delete_1_R_rotate(nodeToBeDeleted->p_Rchild);
+						delete_1_L_rotate(nodeToBeDeleted);
+						dnode = nodeToBeDeleted->p_parent;
+						if (nodeToBeDeleted->color == true) {
+							dnode->color = false;
+							dnode->p_Lchild->color = true;
+							dnode->p_Rchild->color = true;
+						}
+						else {
+							dnode->color = false;
+							dnode->p_Lchild->color = true;
+							dnode->p_Rchild->color = true;
+						}
+					}
+					else {
+
+					}
+				}
+
+			}
+		}
+
+		if (nodeToBeDeleted == nullptr) {
+			//cout << "NodeToBeDeleted not found\n";
+			return;// Basically the node with value I wasnt found so we will do nothing
+		}
+		else {
+			ref = nodeToBeDeleted->p_parent;
+			if (nodeToBeDeleted == root && nodeToBeDeleted->p_Lchild == nullptr && nodeToBeDeleted->p_Rchild == nullptr) {
+				//Only one node is present i.e. root
+				root = nullptr;
+				return;
+			}
+			else if (nodeToBeDeleted == root && nodeToBeDeleted->p_Lchild == nullptr && nodeToBeDeleted->p_Rchild != nullptr && nodeToBeDeleted->p_Rchild->p_Lchild == nullptr && nodeToBeDeleted->p_Rchild->p_Rchild == nullptr) {
+				//only root and right child are present 
+				ref = nodeToBeDeleted->p_parent;
+				root = nodeToBeDeleted->p_Rchild;
+				nodeToBeDeleted->p_Rchild->p_parent = nullptr;
+				nodeToBeDeleted->p_Rchild = nullptr;
+				root->color = false;
+				return;
+			}
+			else if (nodeToBeDeleted == root && nodeToBeDeleted->p_Lchild != nullptr && nodeToBeDeleted->p_Rchild == nullptr && nodeToBeDeleted->p_Lchild->p_Lchild == nullptr && nodeToBeDeleted->p_Lchild->p_Rchild == nullptr) {
+				//only root and left child are present
+				ref = nodeToBeDeleted->p_parent;
+				root = nodeToBeDeleted->p_Lchild;
+				nodeToBeDeleted->p_Lchild->p_parent = nullptr;
+				nodeToBeDeleted->p_Lchild = nullptr;
+				root->color = false;
+				return;
+			}
+			else if (nodeToBeDeleted == root && nodeToBeDeleted->p_Lchild != nullptr && nodeToBeDeleted->p_Rchild != nullptr && nodeToBeDeleted->p_Lchild->p_Lchild == nullptr && nodeToBeDeleted->p_Lchild->p_Rchild == nullptr && nodeToBeDeleted->p_Rchild->p_Lchild == nullptr && nodeToBeDeleted->p_Rchild->p_Rchild == nullptr) {
+				//root with two nodes scenario
+				ref = nodeToBeDeleted->p_parent;
+				root->value = nodeToBeDeleted->p_Lchild->value;
+				nodeToBeDeleted->p_Lchild->p_parent = nullptr;
+				nodeToBeDeleted->p_Lchild = nullptr;
+				return;
+			}
+			else {//It will handle all other cases
+				//Find the color of the node we actually delete(not NodetoBeDeleted), its parent, grandparent and uncle nodes.
+				//---------------------------Preferably put this code in a delete functionality which we will be calling---------------------
+				ref = nodeToBeDeleted->p_parent;
+				x = nodeToBeDeleted;
+				p = x->p_parent;
+				if (p == nullptr) {
+					g = nullptr;
+				}
+				else {
+					g = p->p_parent;
+				}
+				//doubleBlackNode = nullptr;
+				if (g == nullptr) {
+					u = nullptr;
+				}
+				else {
+					if (p == g->p_Lchild)
+						u = g->p_Rchild;//bcoz parent is on the left side
+					else
+						u = g->p_Lchild;
+				}
+
+				//first we will find the predecessor and successor
+				predecessor = nodeToBeDeleted->p_Lchild;
+				if (predecessor != nullptr) {
+					while (true) {
+						if (predecessor->p_Rchild != nullptr) {
+							predecessor = predecessor->p_Rchild;
+						}
+						else {
+							break; //if there are no more right childs then the current predecessor is the max value on P_Lchild and so we will replace it with the nodeToBeDeleted
+						}
+					}//By this point we have both predecessor and node to be deleted
+				}
+				successor = nodeToBeDeleted->p_Rchild;
+				if (successor != nullptr) {
+					while (true) {
+						if (successor->p_Lchild != nullptr) {
+							successor = successor->p_Lchild;
+						}
+						else {
+							break; //if there are no more left childs then the current successor is the min value on P_Rchild and so we will replace it with the nodeToBeDeleted
+						}
+					}//By this point we have both successor and node to be deleted
+				}
+				if (nodeToBeDeleted->p_Lchild == nullptr && nodeToBeDeleted->p_Rchild == nullptr) {//basically leaf nodes
+					//if the node is a red leaf node? Just Delete it
+					if (nodeToBeDeleted->color == true) {
+						//cout << "Deleting red leaf node\n";
+
+						if (nodeToBeDeleted->p_parent->p_Lchild == nodeToBeDeleted) {
+							//i.e. it is the left leaf node
+							dnode = nodeToBeDeleted->p_parent;
+							nodeToBeDeleted->p_parent->p_Lchild = nullptr;
+							nodeToBeDeleted->p_parent = nullptr;
+						}
+						else {
+							//it will be the right leaf node
+							dnode = nodeToBeDeleted->p_parent;
+							nodeToBeDeleted->p_parent->p_Rchild = nullptr;
+							nodeToBeDeleted->p_parent = nullptr;
+						}
+						//Handling height optimization locally
+						node* temp;
+						if (dnode != nullptr) {
+							if (dnode->p_Lchild != nullptr && dnode->p_Rchild == nullptr) {
+								if (dnode->p_Lchild->p_Lchild != nullptr) {
+									delete_1_R_rotate(dnode);
+								}
+								else if (dnode->p_Lchild->p_Rchild != nullptr) {
+									delete_1_L_rotate(dnode->p_Lchild);
+									delete_1_R_rotate(dnode);
+									temp = dnode->p_parent;
+									if (temp->color == true) {
+										temp->color = false;
+										temp->p_Lchild->color = true;
+										temp->p_Rchild->color = true;
+									}
+									else {
+										temp->color = false;
+										temp->p_Lchild->color = true;
+										temp->p_Rchild->color = true;
+									}
+								}
+								else {
+
+								}
+							}
+							else {
+								if (dnode->p_Rchild != nullptr && dnode->p_Lchild == nullptr) {
+									if (dnode->p_Rchild->p_Rchild != nullptr) {
+										delete_1_L_rotate(dnode);
+									}
+									else if (dnode->p_Rchild->p_Lchild != nullptr) {
+										delete_1_R_rotate(dnode->p_Rchild);
+										delete_1_L_rotate(dnode);
+										temp = dnode->p_parent;
+										if (dnode->color == true) {
+											temp->color = false;
+											temp->p_Lchild->color = true;
+											temp->p_Rchild->color = true;
+										}
+										else {
+											temp->color = false;
+											temp->p_Lchild->color = true;
+											temp->p_Rchild->color = true;
+										}
+									}
+									else {
+
+									}
+								}
+
+							}
+						}
+					}
+					else {
+						//Else means the node to be deleted is a black leaf node. In this situation 2 cases will occur...
+						//1. if the parent is a red node then we can just replace the value of parent and child and change the color of the red node to black
+						//2.if the parent is also a black node then it will lead to double black node and we will have to call one of the different delete functions based on the information available
+						doubleBlackNode = nullptr;
+						//Handling case 1
+						if (nodeToBeDeleted->p_parent->color == true) {
+							//cout << "Deleting red leafs black child node\n";
+							ref = nodeToBeDeleted->p_parent;
+							if (nodeToBeDeleted->p_parent->p_Lchild == nodeToBeDeleted) {
+								dnode = nodeToBeDeleted->p_parent;
+								//i.e. it is the left leaf node
+								nodeToBeDeleted->p_parent->p_Lchild = nullptr;
+								nodeToBeDeleted->p_parent = nullptr;
+							}
+							else {
+								//it will be the right leaf node
+								dnode = nodeToBeDeleted->p_parent;
+								nodeToBeDeleted->p_parent->p_Rchild = nullptr;
+								nodeToBeDeleted->p_parent = nullptr;
+							}
+						}
+						else {
+							dnode = nodeToBeDeleted->p_parent;
+							//handling case 2 i.e when parent is also black node
+							if (nodeToBeDeleted->p_parent == root) {
+								doubleBlackNode = nullptr;
+							}
+							else {
+								doubleBlackNode = nullptr;
+							}
+							if (nodeToBeDeleted->p_parent->p_Lchild == nodeToBeDeleted) {
+								//i.e. it is the left leaf node
+								nodeToBeDeleted->p_parent->p_Lchild = nullptr;
+								nodeToBeDeleted->p_parent = nullptr;
+							}
+							else {
+								//it will be the right leaf node
+								nodeToBeDeleted->p_parent->p_Rchild = nullptr;
+								nodeToBeDeleted->p_parent = nullptr;
+							}
+							//by this point we have deleted one black node and we have the reference of double black node
+							//I will handle double black nodes at the end of all if else with a single functionality instead of writing the same code again and again
+						}
+					}
+				}
+				else if (nodeToBeDeleted->p_Lchild != nullptr && nodeToBeDeleted->p_Rchild == nullptr) {
+					//It will be same as if. The only difference is that here we check the color of the child instead of the parent
+					//Handling case 1 i.e. child is red
+					if (nodeToBeDeleted->p_Lchild->color == true) {
+						//cout << "Deleting red leaf node\n";
+
+						nodeToBeDeleted->value = nodeToBeDeleted->p_Lchild->value;
+						nodeToBeDeleted->p_Lchild->p_parent = nullptr;
+						nodeToBeDeleted->p_Lchild = nullptr;
+						nodeToBeDeleted->color = false;
+						dnode = nodeToBeDeleted;
+					}
+					else {
+						//handling case 2 i.e. child is black
+						doubleBlackNode = nullptr;
+						nodeToBeDeleted->value = nodeToBeDeleted->p_Lchild->value;
+						nodeToBeDeleted->p_Lchild->p_parent = nullptr;
+						nodeToBeDeleted->p_Lchild = nullptr;
+						dnode = nodeToBeDeleted->p_parent;
+
+					}
+				}
+				else if (nodeToBeDeleted->p_Lchild == nullptr && nodeToBeDeleted->p_Rchild != nullptr) {
+					//It will be same as if. The only difference is that here we check the color of the child instead of the parent
+					if (nodeToBeDeleted->p_Rchild->color == true) {
+						//cout << "Deleting red leaf node\n";
+
+						nodeToBeDeleted->value = nodeToBeDeleted->p_Rchild->value;
+						nodeToBeDeleted->p_Rchild->p_parent = nullptr;
+						nodeToBeDeleted->p_Rchild = nullptr;
+						nodeToBeDeleted->color = false;
+						dnode = nodeToBeDeleted;
+
+					}
+					else {
+						//handling case 2
+						doubleBlackNode = nullptr;
+						nodeToBeDeleted->value = nodeToBeDeleted->p_Rchild->value;
+						nodeToBeDeleted->p_Rchild->p_parent = nullptr;
+						nodeToBeDeleted->p_Rchild = nullptr;
+						dnode = nodeToBeDeleted->p_parent;
+
+					}
+				}
+				else {
+					//if both children are present we will only and only replace with predecessor unless No predecessor is found which will never be the case as this point is reached only if two children are present
+					if (nodeToBeDeleted->p_Lchild != nullptr) {
+						//replace predecessor
+						//cout << "replacing predecessor with value " << predecessor->value << " and color =" << predecessor->color << endl;
+						nodeToBeDeleted->value = predecessor->value;
+						if (predecessor->p_Lchild == nullptr && predecessor->p_Rchild == nullptr) {
+							//This means that it is the rightmost node
+							//We will handle it like we are deleting a leaf node
+							if (predecessor->color == true) {
+								//cout << "Deleting red leaf node\n";
+								dnode = predecessor->p_parent;
+								if (predecessor->p_parent->p_Lchild == predecessor) {
+									//i.e. it is the left leaf node
+									predecessor->p_parent->p_Lchild = nullptr;
+									predecessor->p_parent = nullptr;
+
+								}
+								else {
+									//it will be the right leaf node
+									predecessor->p_parent->p_Rchild = nullptr;
+									predecessor->p_parent = nullptr;
+								}
+								return;
+							}
+							else {
+								//Else means the node to be deleted is a black leaf node. In this situation 2 cases will occur...
+								//1. if the parent is a red node then we can just replace the value of parent and child and change the color of the red node to black
+								//if the parent is also a black node then it will lead to double black node and we will have to call one of the different delete functions based on the information available
+								doubleBlackNode = nullptr;
+								//Handling case 1
+								if (predecessor->p_parent->color == true) {
+									//	cout << "Deleting red leafs black child node\n";
+									dnode = predecessor->p_parent;
+									ref = predecessor->p_parent;
+									if (predecessor->p_parent->p_Lchild == predecessor) {
+										//i.e. it is the left leaf node
+										//predecessor->p_parent->value = predecessor->value;
+										predecessor->p_parent->p_Lchild = nullptr;
+										predecessor->p_parent = nullptr;
+									}
+									else {
+										//it will be the right leaf node
+										//predecessor->p_parent->value = predecessor->value;
+										predecessor->p_parent->p_Rchild = nullptr;
+										predecessor->p_parent = nullptr;
+									}
+								}
+								else {
+									//handling case 2
+									dnode = predecessor->p_parent;
+									if (predecessor->p_parent == root) {
+										doubleBlackNode = nullptr;
+									}
+									else {
+										doubleBlackNode = nullptr;
+									}
+									if (predecessor->p_parent->p_Lchild == predecessor) {
+										//i.e. it is the left leaf node
+										//predecessor->p_parent->value = predecessor->value;
+										predecessor->p_parent->p_Lchild = nullptr;
+										predecessor->p_parent = nullptr;
+									}
+									else {
+										//it will be the right leaf node
+										//predecessor->p_parent->value = predecessor->value;
+										predecessor->p_parent->p_Rchild = nullptr;
+										predecessor->p_parent = nullptr;
+									}
+
+
+									//by this point we have deleted one black node and we have the reference of double black node
+									//I will handle double black nodes at the end of all if else with a single functionality instead of writing the same code again and again
+								}
+							}
+						}
+						else {
+							//only possibility is that predecessor has a left child. We will have to handle this in the same way that we handle node with only left child case
+							if (predecessor->p_Lchild->color == true) {
+								//	cout << "Deleting red leaf node\n";
+								dnode = predecessor;
+								predecessor->value = predecessor->p_Lchild->value;
+								predecessor->p_Lchild->p_parent = nullptr;
+								predecessor->p_Lchild = nullptr;
+								//predecessor->color = false;
+							}
+							else {
+								dnode = predecessor;
+								//handling case 2
+								if (predecessor->p_parent == root) {
+									doubleBlackNode = nullptr;
+								}
+								else {
+									doubleBlackNode = nullptr;
+								}
+								predecessor->value = predecessor->p_Lchild->value;
+								predecessor->p_Lchild->p_parent = nullptr;
+								predecessor->p_Lchild = nullptr;
+							}
+						}
+						//By this point we will have replaced the node to be deleted with the predecessor and also delete one of the nodes which might or might not lead to black node
+					}
+					else {
+						//we will have to replace the successor
+					//	cout << "replacing successor only because predecessor is not present with value " << successor->value << " and color=" << successor->color << endl;
+						nodeToBeDeleted->value = successor->value;
+
+						if (successor->p_Lchild == nullptr && successor->p_Rchild == nullptr) {
+							//This means that it is the rightmost node
+							//We will handle it like we are deleting a leaf node
+							if (successor->color == true) {
+								//	cout << "Deleting red leaf node\n";
+
+								if (successor->p_parent->p_Lchild == successor) {
+									//i.e. it is the left leaf node
+									successor->p_parent->p_Lchild = nullptr;
+									successor->p_parent = nullptr;
+								}
+								else {
+									//it will be the right leaf node
+									successor->p_parent->p_Rchild = nullptr;
+									successor->p_parent = nullptr;
+								}
+							}
+							else {
+								//Else means the node to be deleted is a black leaf node. In this situation 2 cases will occur...
+								//1. if the parent is a red node then we can just replace the value of parent and child and change the color of the red node to black
+								//2.if the parent is also a black node then it will lead to double black node and we will have to call one of the different delete functions based on the information available
+								doubleBlackNode = nullptr;
+								//Handling case 1
+								if (successor->p_parent->color == true) {
+									//	cout << "Deleting red leaf node\n";
+
+									ref = successor->p_parent;
+									if (successor->p_parent->p_Lchild == successor) {
+										//i.e. it is the left leaf node
+										//successor->p_parent->value = successor->value;
+										successor->p_parent->p_Lchild = nullptr;
+										successor->p_parent = nullptr;
+									}
+									else {
+										//it will be the right leaf node
+										//successor->p_parent->value = successor->value;
+										successor->p_parent->p_Rchild = nullptr;
+										successor->p_parent = nullptr;
+									}
+								}
+								else {
+									//handling case 2
+									if (successor->p_parent == root) {
+										doubleBlackNode = nullptr;
+									}
+									else {
+										doubleBlackNode = nullptr;
+									}
+									if (successor->p_parent->p_Lchild == successor) {
+										//i.e. it is the left leaf node
+										//successor->p_parent->value = successor->value;
+										successor->p_parent->p_Lchild = nullptr;
+										successor->p_parent = nullptr;
+									}
+									else {
+										//it will be the right leaf node
+										//successor->p_parent->value = successor->value;
+										successor->p_parent->p_Rchild = nullptr;
+										successor->p_parent = nullptr;
+									}
+									//by this point we have deleted one black node and we have the reference of double black node
+									//I will handle double black nodes at the end of all if else with a single functionality instead of writing the same code again and again
+								}
+							}
+						}
+						else {
+							//only possibility is that successor has a right child. We will have to handle this in the same way that we handle node with only left child case
+							if (successor->p_Rchild->color == true) {
+								//cout << "Deleting red leaf node\n";
+
+								successor->value = successor->p_Rchild->value;
+								successor->p_Rchild->p_parent = nullptr;
+								successor->p_Rchild = nullptr;
+							}
+							else {
+								//handling case 2
+								if (successor->p_parent == root) {
+									doubleBlackNode = nullptr;
+
+								}
+								else {
+									doubleBlackNode = nullptr;
+								}
+								successor->value = successor->p_Rchild->value;
+								successor->p_Rchild->p_parent = nullptr;
+								successor->p_Rchild = nullptr;
+							}
+						}
+						//By this point we will have replaced the node to be deleted with the successor and also delete one of the nodes which might or might not lead to black node
+					}
+				}
+			}
+			//By this point we have references for u, p, g, x and also double black node if it is present. if double black nodes are present we will have to call one of the below delete operations and pass 
+			//the reference of double black node as p
+			//1. how to identify which side the double black node is present? what if double black node is a nullptr? how do we identify?
+			//Ans- I will be making doubleBlackNode->parent link point to itself. This is how i will be identifying in the next delete functions which is the uncle node and which is the parent node.
+			//The double black node is generally applied to the parent node
+			bool flag = true; //will be using it to see if it is the first iteration or seconnd. Based on this i will have to change u g and p values
+			do {
+				if (root != nullptr) {
+					root->color = false;
+				}
+				if (flag) {
+					//do nothing and use previous values and change flag to false
+					flag = false;
+					g = dnode;
+					if (g->p_Lchild == nullptr)
+					{
+						p = g->p_Lchild;
+						u = g->p_Rchild;
+					}
+					else {
+						p = g->p_Rchild;
+						u = g->p_Lchild;
+					}
+					//Handling edge cases
+				}
+				else {
+					if (doubleBlackNode != nullptr) {
+						if (doubleBlackNode->value == -1)
+							break;
+						p = doubleBlackNode;
+						g = dnode;
+						if (g != nullptr) {
+							if (p == g->p_Lchild)
+								u = g->p_Rchild;
+							else
+								u = g->p_Lchild;
+						}
+						else {
+							u = nullptr;
+						}
+					}
+					else {
+						//By 2nd iteration, 1 2B will break. If 2A is encountered it is handled in the if part.
+						//if it is case 3
+						g = dnode;
+						if (g->p_Lchild == nullptr) {
+							p = g->p_Lchild;
+							u = g->p_Rchild;
+						}
+						else {
+							p = g->p_Rchild;
+							u = g->p_Lchild;
+						}
+					}
+
+				}
+				if (doubleBlackNode != nullptr) {
+					//double black node is not initialized to nullptr
+					if (doubleBlackNode->value == -1) {
+						//This means that there is no double black node as the value is still -1
+						break;
+					}
+					else {
+						//This point will be reached when there is a double black node
+						//Case 1 - Sibling of double black node is black and the sibling has atleast 1 red child nodes
+						if (u->color == false) {
+							//now we have to check if the uncle node has a red child and call appropriate rotations
+							if (u->p_Lchild != nullptr) {
+								if (u->p_Lchild->color == true) {
+									delete_1(g);
+
+									if (g->p_Lchild != nullptr) {
+										if (g->p_Lchild->color == true) {
+											dnode = g;
+										}
+										else {
+											if (g->p_Rchild != nullptr) {
+												if (g->p_Rchild->color == true) {
+													dnode = g;
+												}
+											}
+										}
+									}
+									else {
+										if (g->p_Rchild != nullptr) {
+											if (g->p_Rchild->color == true) {
+												dnode = g;
+
+											}
+										}
+									}
+									//if (doubleBlackNode == nullptr)
+										doubleBlackNode = new node(-1);
+								}
+								else if (u->p_Rchild != nullptr) {
+									if (u->p_Rchild->color == true) {
+										delete_1(g);
+										if (g->p_Lchild != nullptr) {
+											if (g->p_Lchild->color == true) {
+												dnode = g;
+											}
+											else {
+												if (g->p_Rchild != nullptr) {
+													if (g->p_Rchild->color == true) {
+														dnode = g;
+													}
+												}
+											}
+										}
+										else {
+											if (g->p_Rchild != nullptr) {
+												if (g->p_Rchild->color == true) {
+													dnode = g;
+												}
+											}
+										}
+										if (doubleBlackNode == nullptr)
+											doubleBlackNode = new node(-1);
+									}
+									else {
+										//This point is reached when uncle node is black and its 2 children are black as well. 
+										//This will fall under Case 2. Now we need to check the color of the parent node and call the delete case accordingly
+										if (g->color == false) {
+											dnode = g->p_parent;
+											delete_2A(g);
+
+											doubleBlackNode = g;
+										}
+										else {
+											dnode = g->p_parent;
+											delete_2B(g);
+											if (doubleBlackNode != nullptr)
+												doubleBlackNode->p_parent = g;
+											doubleBlackNode = new node(-1); //removing the double black node
+										}
+									}
+								}
+
+							}
+							else if (u->p_Rchild != nullptr) {
+								if (u->p_Rchild->color == true) {
+									delete_1(g);
+									if (g->p_Lchild != nullptr) {
+										if (g->p_Lchild->color == true) {
+											dnode = g;
+										}
+										else {
+											if (g->p_Rchild != nullptr) {
+												if (g->p_Rchild->color == true) {
+													dnode = g;
+												}
+											}
+										}
+									}
+									else {
+										if (g->p_Rchild != nullptr) {
+											if (g->p_Rchild->color == true) {
+												dnode = g;
+											}
+											else {
+												if (g->color == false) {
+													dnode = g->p_parent;
+													delete_2A(g);
+													doubleBlackNode = g;
+												}
+												else {
+													dnode = g->p_parent;
+													delete_2B(g);
+													if (doubleBlackNode != nullptr)
+														doubleBlackNode->p_parent = g;
+													doubleBlackNode = new node(-1); //removing the double black node
+													break;
+												}
+											}
+
+										}
+									}
+									if (doubleBlackNode == nullptr)
+										doubleBlackNode = new node(-1);
+								}
+							}
+							else {
+								//This point is reached when uncle node is black and its 2 children are black as well. 
+								//This will fall under Case 2. Now we need to check the color of the parent node and call the delete case accordingly
+								if (g->color == false) {
+									dnode = g->p_parent;
+									delete_2A(g);
+									doubleBlackNode = g;
+								}
+								else {
+									dnode = g->p_parent;
+									delete_2B(g);
+									if (doubleBlackNode != nullptr)
+										doubleBlackNode->p_parent = g;
+									doubleBlackNode = new node(-1); //removing the double black node
+									break;
+								}
+							}
+						}
+						else {
+							//This means that the uncle node is red
+							delete_3(g);
+							if (g->p_Lchild != nullptr && g->p_Rchild != nullptr) {
+								dnode = g;
+								
+							}
+							else {
+								break;		//final changes
+							}
+						}
+
+					}
+				}
+				else {
+					//else double black node is a nullptr which means we have a problem. so basically i will be recalculating the g and u positions here to fix the problem
+					if (u->color == false) {
+						//now we have to check if the uncle node has a red child and call appropriate rotations
+						if (u->p_Lchild != nullptr) {
+							if (u->p_Lchild->color == true) {
+								delete_1(g);
+								if (g->p_Lchild != nullptr) {
+									if (g->p_Lchild->color == true) {
+										dnode = g;
+									}
+									else {
+										if (g->p_Rchild != nullptr) {
+											if (g->p_Rchild->color == true) {
+												dnode = g;
+											}
+										}
+									}
+								}
+								else {
+									if (g->p_Rchild != nullptr) {
+										if (g->p_Rchild->color == true) {
+											dnode = g;
+										}
+									}
+								}
+								if (doubleBlackNode == nullptr)
+									doubleBlackNode = new node(-1);
+							}
+							else if (u->p_Rchild != nullptr) {
+								if (u->p_Rchild->color == true) {
+									delete_1(g);
+									if (g->p_Lchild != nullptr) {
+										if (g->p_Lchild->color == true) {
+											dnode = g;
+										}
+										else {
+											if (g->p_Rchild != nullptr) {
+												if (g->p_Rchild->color == true) {
+													dnode = g;
+												}
+											}
+										}
+									}
+									else {
+										if (g->p_Rchild != nullptr) {
+											if (g->p_Rchild->color == true) {
+												dnode = g;
+											}
+										}
+									}
+									if (doubleBlackNode == nullptr)
+										doubleBlackNode = new node(-1);
+								}
+								else {
+									if (g->color == false) {
+										dnode = g->p_parent;
+										delete_2A(g);
+										doubleBlackNode = g;
+									}
+									else {
+										dnode = g->p_parent;
+										delete_2B(g);
+										if (doubleBlackNode != nullptr)
+											doubleBlackNode->p_parent = g;
+										doubleBlackNode = new node(-1); //removing the double black node
+										break;
+									}
+								}
+							}
+							else {
+								//This point is reached when uncle node is black and its 2 children are black as well. 
+								//This will fall under Case 2. Now we need to check the color of the parent node and call the delete case accordingly
+								if (g->color == false) {
+									dnode = g->p_parent;
+									delete_2A(g);
+
+									doubleBlackNode = g;
+								}
+								else {
+									dnode = g->p_parent;
+									delete_2B(g);
+									if (doubleBlackNode != nullptr)
+										doubleBlackNode->p_parent = g;
+									doubleBlackNode = new node(-1);
+									break;
+								}
+							}
+						}
+						else if (u->p_Rchild != nullptr) {
+							if (u->p_Rchild->color == true) {
+								delete_1(g);
+								if (g->p_Lchild != nullptr) {
+									if (g->p_Lchild->color == true) {
+										dnode = g;
+										//	break;
+									}
+									else {
+										if (g->p_Rchild != nullptr) {
+											if (g->p_Rchild->color == true) {
+												dnode = g;
+											}
+										}
+									}
+								}
+								else {
+									if (g->p_Rchild != nullptr) {
+										if (g->p_Rchild->color == true) {
+											dnode = g;
+										}
+									}
+								}
+								if (doubleBlackNode == nullptr)
+									doubleBlackNode = new node(-1);
+							}
+						}
+						else {
+							//This point is reached when uncle node is black and its 2 children are black as well. 
+							//This will fall under Case 2. Now we need to check the color of the parent node and call the delete case accordingly
+							if (g->color == false) {
+								dnode = g->p_parent;
+								delete_2A(g);
+
+								doubleBlackNode = g;
+							}
+							else {
+								dnode = g->p_parent;
+								delete_2B(g);
+								if (doubleBlackNode != nullptr)
+									doubleBlackNode->p_parent = g;
+								doubleBlackNode = new node(-1); //removing the double black node
+							}
+						}
+					}
+					else {
+						//This means that the uncle node is red
+						delete_3(g);
+							dnode = g;
+						
+					}
+					//Re-iterating the edge cases
+					if (root->p_Lchild != nullptr) {
+						if (root->p_Lchild->p_Lchild == nullptr && root->p_Lchild->p_Rchild == nullptr) {
+							if (root->p_Rchild != nullptr) {
+								if (root->p_Rchild->p_Lchild == nullptr && root->p_Rchild->p_Rchild == nullptr) {
+									root->p_Lchild->color = true;
+									root->p_Rchild->color = true;
+								}
+
+							}
+						}
+
+					}
+				}
+			} while (true);
+		}
+		//re-iterating that the root node has to always be black
+		if (root != nullptr) {
+			root->color = false;
+		}
+		if (root->p_Lchild != nullptr) {
+			if (root->p_Rchild != nullptr) {
+				//here we have verified that root has both lchild and rchild for sure
+				if (root->p_Lchild->p_Lchild == nullptr && root->p_Lchild->p_Rchild == nullptr && root->p_Rchild->p_Lchild == nullptr && root->p_Rchild->p_Rchild == nullptr) {
+					root->p_Lchild->color = true;
+					root->p_Rchild->color = true;
+				}
+			}
+		}
+		//cout << "exiting delete node function\n";
+
+	}
+	void delete_1(node* p) { //case 1 of delete_node; p points to the p_parent of double black node
+		//continue from here.... basically i have defined when which delete case should be called. Now i have to just define the delete cases again... Mainly the variables arent declared here so i am getting errors.
+		//Resolve this and also make sure that at the end of all the delete cases you handle the assert color cases.
+		//cout << "inside delete 1 function\n";
+
+		node* parent, * g, * u;//In the book we have defined x, p, g and u as the nodes on which we perform operations
+		node* doubleBlackNode = new node(-1);
+		bool tempColor;
+		g = p;
+		tempColor = g->color;
+		if (g->p_Lchild != nullptr) {
+			if (g->p_Lchild->p_parent == g->p_Lchild) {
+				parent = g->p_Lchild;
+				u = g->p_Rchild;
+			}
+			else {
+				if (g->p_Rchild != nullptr) {
+					if (g->p_Rchild->p_parent == g->p_Rchild) {
+						parent = g->p_Rchild;
+						u = g->p_Lchild;
+					}
+					else {
+						cout << "CANT FIND DOUBLE LINKED NODE\n"; //Just writing this inner else part for the sake of it. It should technically never be reached. Without this else part compiler was throwing errors at me
+						parent = g->p_Rchild;
+						u = g->p_Lchild;
+					}
+				}
+				else {
+					u = g->p_Lchild;
+					parent = g->p_Rchild;
+				}
+			}
+		}
+		else {
+			u = g->p_Rchild;
+			parent = g->p_Lchild;
+		}
+
+		doubleBlackNode = parent;
+		//if (p == g->p_Lchild)
+		//	u = g->p_Rchild;//bcoz parent is on the left side
+		//else
+		//	u = g->p_Lchild;
+		if (u == g->p_Lchild) {
+			if (u->p_Lchild != nullptr) {
+				if (u->p_Lchild->color == true) {
+					//LL pattern so we will have to perform R rotate at g node
+					delete_1_R_rotate(g);
+				}
+				else {
+					//check the right side
+					if (u->p_Rchild != nullptr) {
+						if (u->p_Rchild->color == true) {
+							//LR pattern
+							delete_1_L_rotate(u);
+							delete_1_R_rotate(g);
+						}
+					}
+				}
+			}
+			else {
+				//if u->lchild is nullptr then we have to check if right side existes
+				if (u->p_Rchild != nullptr) {
+					if (u->p_Rchild->color == true) {
+						//LR pattern
+						delete_1_L_rotate(u);
+						delete_1_R_rotate(g);
+					}
+				}
+			}
+			//By this point the R rotations are made. Now we will assert colors
+				if (g->color == true) {
+					g->p_parent->color = true;
+				}
+				else {
+					g->p_parent->color = false;
+				}
+				g->color = false;
+				if (g->p_parent->p_Lchild != nullptr)
+					g->p_parent->p_Lchild->color = false;
+
+
+			//doubleBlackNode = nullptr;
+		}
+		else {
+			//u will be the right child so we will have to check for R patterns
+			if (u->p_Rchild != nullptr) {
+				if (u->p_Rchild->color == true) {
+					//RR pattern so we will have to perform L rotate at g node
+					delete_1_L_rotate(g);
+				}
+				else {
+					//check the left side
+					if (u->p_Lchild != nullptr) {
+						if (u->p_Lchild->color == true) {
+							//RL pattern
+							delete_1_R_rotate(u);
+							delete_1_L_rotate(g);
+						}
+					}
+				}
+			}
+			else {
+				//if u->p_Rchild is nullptr then we have to check if left side exists
+				if (u->p_Lchild != nullptr) {
+					if (u->p_Lchild->color == true) {
+						//RL pattern
+						delete_1_R_rotate(u);
+						delete_1_L_rotate(g);
+					}
+				}
+			}
+			//By this point the L rotations are made. Now we will assert colors
+				if (g->color == true) {
+					g->p_parent->color = true;
+				}
+				else {
+					g->p_parent->color = false;
+				}
+				g->color = false;
+				if (g->p_parent->p_Rchild != nullptr)
+					g->p_parent->p_Rchild->color = false;//Check this
+
+			if (root != nullptr)
+				root->color = false;
+
+		}
+		//removing double black node
+		if (doubleBlackNode != nullptr)
+			parent->p_parent = g;
+		//after making all the rotations we have to identify and fix root again
+		//cout << "exiting delete 1 function\n";
+		//InorderPrint(root);
+	}
+	void delete_1_R_rotate(node* p) {//R_totate used in case 1 of delete_node; p points to the p_parent of double black node
+		//cout << "inside delete_1_R R-Rotate\n";
+		bool dbn = false;
+		if (p->p_Rchild != nullptr) {
+			if (p->p_Rchild->p_parent == p->p_Rchild) {
+				dbn = true;
+			}
+		}
+
+		node* action = p;
+		node* lchild = p->p_Lchild;
+		node* sameBranchChild;
+		if (p->p_Lchild == nullptr) {
+			sameBranchChild = nullptr;
+		}
+		else {
+			sameBranchChild = p->p_Lchild->p_Lchild;
+		}
+
+		node* branchShiftChild;
+		if (p->p_Lchild == nullptr) {
+			branchShiftChild = nullptr;
+		}
+		else {
+			branchShiftChild = p->p_Lchild->p_Rchild;
+		}
+		node* rchild = p->p_Rchild;
+		//cout << "The program is inside R_Rotate function\n";
+		if (p != root) {//i.e rotation is happening anywhere else apart from the root node
+			if (p->p_parent->p_Rchild == p) {//if the action node is on the right branch
+				p->p_parent->p_Rchild = lchild;
+				if (lchild != nullptr)
+					lchild->p_parent = action->p_parent;
+				if (lchild != nullptr)
+					lchild->p_Rchild = action;
+				action->p_parent = lchild;
+				if (lchild != nullptr)
+					lchild->p_Lchild = sameBranchChild;
+				if (sameBranchChild != nullptr)
+					sameBranchChild->p_parent = lchild;
+				action->p_Lchild = branchShiftChild;
+				if (branchShiftChild != nullptr)
+					branchShiftChild->p_parent = action;
+				action->p_Rchild = rchild;
+				if (rchild != nullptr)
+					rchild->p_parent = action;
+			}
+			else {//else the action node will be on the left branch
+				p->p_parent->p_Lchild = lchild;
+				lchild->p_parent = action->p_parent;
+				lchild->p_Rchild = action;
+				action->p_parent = lchild;
+				lchild->p_Lchild = sameBranchChild;
+				if (sameBranchChild != nullptr)
+					sameBranchChild->p_parent = lchild;
+				action->p_Lchild = branchShiftChild;
+				if (branchShiftChild != nullptr)
+					branchShiftChild->p_parent = action;
+				action->p_Rchild = rchild;
+				if (rchild != nullptr)
+					rchild->p_parent = action;
+			}
+		}
+		else {//This will mean that the action node is the root node
+			//cout << "Rotation is taking place at root\n";
+			root = lchild;
+			lchild->p_parent = nullptr;
+			lchild->p_Lchild = sameBranchChild;
+			if (sameBranchChild != nullptr)
+				sameBranchChild->p_parent = lchild;
+			lchild->p_Rchild = action;
+			action->p_parent = lchild;
+			action->p_Lchild = branchShiftChild;
+			if (branchShiftChild != nullptr)
+				branchShiftChild->p_parent = action;
+			action->p_Rchild = rchild;
+			if (rchild != nullptr)
+				rchild->p_parent = action;
+		}
+		if (dbn) {
+			p->p_Rchild->p_parent = p->p_Rchild;
+		}
+	}
+	void delete_1_L_rotate(node* p) {//L_totate used in case 1 of delete_node; p points to the p_parent of double black node
+		//cout << "inside delete_1_ L-Rotate\n";
+		bool dbn = false;
+		if (p->p_Lchild != nullptr) {
+			if (p->p_Lchild->p_parent == p->p_Lchild) {
+				dbn = true;
+			}
+		}
+
+		node* action = p;
+		node* lchild = p->p_Lchild;
+		node* sameBranchChild;
+		node* branchShiftChild;
+		if (p->p_Rchild != nullptr) {
+			sameBranchChild = p->p_Rchild->p_Rchild;
+			branchShiftChild = p->p_Rchild->p_Lchild;
+		}
+		else {
+			sameBranchChild = nullptr;
+			branchShiftChild = nullptr;
+		}
+		node* rchild = p->p_Rchild;
+		if (p != root) { //Any internal node
+			if (p->p_parent->p_Rchild == p) {//action node is on the right branch
+				p->p_parent->p_Rchild = rchild;
+				rchild->p_parent = action->p_parent;
+				rchild->p_Lchild = action;
+				action->p_parent = rchild;
+				rchild->p_Rchild = sameBranchChild;
+				if (sameBranchChild != nullptr)
+					sameBranchChild->p_parent = rchild;
+				action->p_Lchild = lchild;
+				if (lchild != nullptr)
+					lchild->p_parent = action;
+				action->p_Rchild = branchShiftChild;
+				if (branchShiftChild != nullptr)
+					branchShiftChild->p_parent = action;
+			}
+			else {//action node is on left child
+				p->p_parent->p_Lchild = rchild;
+				if (rchild != nullptr)
+					rchild->p_parent = action->p_parent;
+				if (rchild != nullptr)
+					rchild->p_Lchild = action;
+				action->p_parent = rchild;
+				if (rchild != nullptr)
+					rchild->p_Rchild = sameBranchChild;
+				if (sameBranchChild != nullptr)
+					sameBranchChild->p_parent = rchild;
+				action->p_Lchild = lchild;
+				if (lchild != nullptr)
+					lchild->p_parent = action;
+				action->p_Rchild = branchShiftChild;
+				if (branchShiftChild != nullptr)
+					branchShiftChild->p_parent = action;
+			}
+		}
+		else {//This will mean that the action node is the root node
+			root = rchild;
+			rchild->p_parent = nullptr;
+			rchild->p_Lchild = action;
+			action->p_parent = rchild;
+			rchild->p_Rchild = sameBranchChild;
+			if (sameBranchChild != nullptr)
+				sameBranchChild->p_parent = rchild;
+			action->p_Lchild = lchild;
+			if (lchild != nullptr)
+				lchild->p_parent = action;
+			action->p_Rchild = branchShiftChild;
+			if (branchShiftChild != nullptr)
+				branchShiftChild->p_parent = action;
+		}
+		//By this point the rotations are completed.
+		if (dbn) {
+			p->p_Lchild->p_parent = p->p_Lchild;
+		}
+	}
+	void delete_2A(node* p) { //case 2A of delete_node; p points to the p_parent of double black node
+		//cout << "inside delete 2A function\n";
+
+		//we will first identify the parent and uncle nodes using doubleNode->parent=doubleNode method
+		node* parent, * g, * u;//In the book we have defined x, p, g and u as the nodes on which we perform operations
+		node* doubleBlackNode = new node(-1);
+		g = p;
+		if (g->p_Lchild != nullptr) {
+			if (g->p_Lchild->p_parent == g->p_Lchild) {
+				parent = g->p_Lchild;
+				u = g->p_Rchild;
+			}
+			else {
+				if (g->p_Rchild != nullptr) {
+					if (g->p_Rchild->p_parent == g->p_Rchild) {
+						parent = g->p_Rchild;
+						u = g->p_Lchild;
+					}
+					else {
+						cout << "CANT FIND DOUBLE LINKED NODE\n"; //Just writing this inner else part for the sake of it. It should technically never be reached. Without this else part compiler was throwing errors at me
+						parent = g->p_Rchild;
+						u = g->p_Lchild;
+					}
+				}
+				else {
+					u = g->p_Lchild;
+					parent = g->p_Rchild;
+				}
+			}
+		}
+		else {
+			u = g->p_Rchild;
+			parent = g->p_Lchild;
+		}
+		if (parent != nullptr) {
+			if (parent->p_parent == parent) {
+				parent->p_parent = g;					//final change
+			}
+		}
+		g->p_parent = g;//converting parent to a double black node
+		u->color = true; // converting uncle node to red
+		//cout << "exiting delete 2A function\n";
+		//InorderPrint(root);
+
+	}
+	void delete_2B(node* p) {//case 2B of delete_node; p points to the p_parent of double black node
+		//cout << "inside delete 2B function\n";
+
+		node* parent, * g, * u;//In the book we have defined x, p, g and u as the nodes on which we perform operations
+		node* doubleBlackNode = new node(-1);
+		g = p;
+		if (g->p_Lchild != nullptr) {
+			if (g->p_Lchild->p_parent == g->p_Lchild) {
+				parent = g->p_Lchild;
+				u = g->p_Rchild;
+			}
+			else {
+				if (g->p_Rchild != nullptr) {
+					if (g->p_Rchild->p_parent == g->p_Rchild) {
+						parent = g->p_Rchild;
+						u = g->p_Lchild;
+					}
+					else {
+						cout << "CANT FIND DOUBLE LINKED NODE\n"; //Just writing this inner else part for the sake of it. It should technically never be reached. Without this else part compiler was throwing errors at me
+						parent = g->p_Rchild;
+						u = g->p_Lchild;
+					}
+				}
+				else {
+					u = g->p_Lchild;
+					parent = g->p_Rchild;
+				}
+			}
+		}
+		else {
+			u = g->p_Rchild;
+			parent = g->p_Lchild;
+		}
+
+		doubleBlackNode = parent;
+		//making the doubleBlack Nodes parent link proper to make it a single node again
+		if (doubleBlackNode != nullptr) {
+			if (u != nullptr) {
+				if (u->color == true)
+					u->color = false;
+				else
+					u->color = true;
+			}	
+			g->color = false;
+			doubleBlackNode->p_parent = g;
+		}
+		else {
+			//if double black node is nullptr then just change the colours
+			if (u != nullptr) {
+				u->color = true;	//changing color of uncle and grandparent nodes
+			}
+			
+			g->color = false;
+
+		}
+		//cout << "exiting delete 2B function\n";
+
+	}
+	void delete_3(node* p) {//case 3 of delete_node; p points to the p_parent of double black node
+		//cout << "inside delete 3 function\n";
+		node* parent, * g, * u;//In the book we have defined x, p, g and u as the nodes on which we perform operations
+		node* doubleBlackNode = new node(-1);
+		node* uncle;
+		bool LRrotate; //I will use true for L rotate and false for R Rotate
+		g = p;
+		if (g->p_Lchild != nullptr) {
+			if (g->p_Lchild->p_parent == g->p_Lchild) {
+				parent = g->p_Lchild;
+				u = g->p_Rchild;
+			}
+			else {
+				if (g->p_Rchild != nullptr) {
+					if (g->p_Rchild->p_parent == g->p_Rchild) {
+						parent = g->p_Rchild;
+						u = g->p_Lchild;
+					}
+					else {
+						cout << "CANT FIND DOUBLE LINKED NODE\n"; //Just writing this inner else part for the sake of it. It should technically never be reached. Without this else part compiler was throwing errors at me
+						parent = g->p_Rchild;
+						u = g->p_Lchild;
+					}
+				}
+				else {
+					u = g->p_Lchild;
+					parent = g->p_Rchild;
+				}
+			}
+		}
+		else {
+			u = g->p_Rchild;
+			parent = g->p_Lchild;
+		}
+		doubleBlackNode = parent;
+		//Writing main logic below
+		if (u == g->p_Lchild) {
+			delete_1_R_rotate(g);
+			LRrotate = false;
+			//after making the rotations we have to change th color of u and g nodes
+			g->color = true;
+			u->color = false;
+			uncle = g->p_Lchild;
+			//We also need to change the root if rotations took place at the root
+			//I am utilizing the doubleBlackNode value to look into this. if it is nullptr then rotation took place at root else it wouldnt have taken place at the root
+			if (p == root) {
+				root = u;
+				root->p_parent = nullptr;			//Re write the code here
+				parent = g;
+			}
+
+		}
+		else {
+			delete_1_L_rotate(g);
+			LRrotate = true;
+			//after making the rotations we have to change th color of u and g nodes
+			//after making the rotations we have to change th color of u and g nodes
+			g->color = true;
+			u->color = false;
+			uncle = g->p_Rchild;
+			//We also need to change the root if rotations took place at the root
+			if (p == root) {
+				root = u;
+				root->p_parent = nullptr;
+				parent = g;
+			}
+		}
+		//cout << "exiting delete 3 function\n";
+
+	}
+	//All other cases of delete_node should be directly implemented inside the delete_node.
+
+	//For the following, during traveral, print (value, color) of each node.
+	void InorderPrint(node* p)
+	{
+		if (!p)
+			return;
+		InorderPrint(p->p_Lchild);
+		cout << p->value << " color=" << p->color << endl;
+		InorderPrint(p->p_Rchild);
+
+	}
+	void PostorderPrint(node* p) {
+		if (!p)
+			return;
+		PostorderPrint(p->p_Lchild);
+		PostorderPrint(p->p_Rchild);
+		cout << p->value << " color=" << p->color << endl;
+	}
+	void PreorderPrint(node* p) {
+		if (!p)
+			return;
+		cout << p->value << " color=" << p->color << endl;
+		PreorderPrint(p->p_Lchild);
+		PreorderPrint(p->p_Rchild);
+	}
+};
+
+int main() {
+	tree t1;
+	t1.root = new node(100);
+	//level 2 
+	t1.root->p_Lchild = new node(50);
+	t1.root->p_Lchild->p_parent = t1.root;
+	t1.root->p_Lchild->color = 1;
+	t1.root->p_Rchild = new node(200);
+	t1.root->p_Rchild->p_parent = t1.root;
+	t1.root->p_Rchild->color = 0;
+	//level 3
+	t1.root->p_Lchild->p_Lchild = new node(30);
+	t1.root->p_Lchild->p_Rchild = new node(80);
+	t1.root->p_Lchild->p_Lchild->p_parent = t1.root->p_Lchild;
+	t1.root->p_Lchild->p_Rchild->p_parent = t1.root->p_Lchild;
+
+	t1.root->p_Rchild->p_Lchild = new node(150);
+	t1.root->p_Rchild->p_Lchild->color = 1;
+	t1.root->p_Rchild->p_Rchild = new node(300);
+	t1.root->p_Rchild->p_Lchild->p_parent = t1.root->p_Rchild;
+	t1.root->p_Rchild->p_Rchild->p_parent = t1.root->p_Rchild;
+	//level 4
+	t1.root->p_Lchild->p_Lchild->p_Lchild = new node(20);
+	t1.root->p_Lchild->p_Lchild->p_Lchild->color = 1;
+	t1.root->p_Lchild->p_Lchild->p_Rchild = new node(40);
+	t1.root->p_Lchild->p_Lchild->p_Lchild->p_parent = t1.root->p_Lchild->p_Lchild;
+	t1.root->p_Lchild->p_Lchild->p_Rchild->p_parent = t1.root->p_Lchild->p_Lchild;
+
+	t1.root->p_Lchild->p_Rchild->p_Lchild = new node(60);
+	t1.root->p_Lchild->p_Rchild->p_Rchild = new node(90);
+	t1.root->p_Lchild->p_Rchild->p_Lchild->p_parent = t1.root->p_Lchild->p_Rchild;
+	t1.root->p_Lchild->p_Rchild->p_Rchild->p_parent = t1.root->p_Lchild->p_Rchild;
+
+	t1.root->p_Rchild->p_Lchild->p_Lchild = new node(120);
+	t1.root->p_Rchild->p_Lchild->p_Rchild = new node(180);
+	t1.root->p_Rchild->p_Lchild->p_Lchild->p_parent = t1.root->p_Rchild->p_Lchild;
+	t1.root->p_Rchild->p_Lchild->p_Rchild->p_parent = t1.root->p_Rchild->p_Lchild;
+	//level 5
+	t1.root->p_Lchild->p_Lchild->p_Lchild->p_Lchild = new node(10);
+	t1.root->p_Lchild->p_Lchild->p_Lchild->p_Rchild = new node(25);
+	t1.root->p_Lchild->p_Lchild->p_Lchild->p_Lchild->p_parent = t1.root->p_Lchild->p_Lchild->p_Lchild;
+	t1.root->p_Lchild->p_Lchild->p_Lchild->p_Rchild->p_parent = t1.root->p_Lchild->p_Lchild->p_Lchild;
+	t1.InorderPrint(t1.root);
+	//t1.delete_node(200);
+	//cout << "\n 2B Delete 10 Points" << endl;
+	//t1.InorderPrint(t1.root);
+	//t1.delete_node(100);
+	//cout << "\n 2A Delete 10 Points" << endl;
+	//t1.InorderPrint(t1.root);
+	//t1.delete_node(50);
+	//cout << "\n 1 Delete 5 Points" << endl;
+	//t1.InorderPrint(t1.root);
+	t1.delete_node(50);
+	cout << "\n 3 Delete 10 Points" << endl;
+	t1.InorderPrint(t1.root);
+	getchar();
+	getchar();
+	return 0;
+}
